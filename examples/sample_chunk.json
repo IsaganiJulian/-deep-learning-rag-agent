@@ -1,0 +1,44 @@
+{
+  "_comment": "This is the canonical example of a well-formed chunk. Every chunk in your corpus must follow this schema exactly. The Pipeline Engineer's ingestion code validates against this structure.",
+
+  "chunk_id": "auto-generated-by-VectorStoreManager.generate_chunk_id()",
+
+  "chunk_text": "Long Short-Term Memory networks (LSTMs) solve the vanishing gradient problem that affects standard RNNs. They do this through three learned gates: the forget gate decides what information to discard from the cell state; the input gate decides what new information to store; and the output gate decides what portion of the cell state to expose as the hidden state. This gated architecture allows LSTMs to selectively maintain relevant information across arbitrarily long sequences, making them well-suited for tasks such as machine translation, speech recognition, and time series forecasting where long-range dependencies are critical.",
+
+  "metadata": {
+    "topic": "LSTM",
+    "difficulty": "intermediate",
+    "type": "concept_explanation",
+    "source": "lstm.md",
+    "related_topics": ["RNN", "vanishing_gradient", "Seq2Seq", "backpropagation"],
+    "is_bonus": false
+  },
+
+  "_validation_rules": {
+    "chunk_text_min_words": 100,
+    "chunk_text_max_words": 300,
+    "topic_allowed_values": [
+      "ANN", "CNN", "RNN", "LSTM", "Seq2Seq", "Autoencoder",
+      "SOM", "BoltzmannMachine", "GAN"
+    ],
+    "difficulty_allowed_values": ["beginner", "intermediate", "advanced"],
+    "type_allowed_values": [
+      "concept_explanation",
+      "architecture",
+      "training_process",
+      "use_case",
+      "comparison",
+      "mathematical_foundation",
+      "historical_context"
+    ],
+    "is_bonus_true_for": ["SOM", "BoltzmannMachine", "GAN"]
+  },
+
+  "_quality_checklist": [
+    "Remove the topic name from chunk_text — can you still identify the topic from the content alone? If no, the chunk is too generic.",
+    "Could this chunk, on its own, be the basis for exactly one interview question? If it covers five ideas, split it.",
+    "Are all related_topics listed? This field enables cross-topic retrieval.",
+    "Is the difficulty level accurate? 'beginner' = definition only. 'intermediate' = mechanism. 'advanced' = tradeoffs, math, or research context.",
+    "Does the chunk contain any content from a landmark paper? If so, set source to the paper filename and add the paper as a related source."
+  ]
+}
