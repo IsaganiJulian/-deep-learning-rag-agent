@@ -69,36 +69,36 @@ You are building the backbone. Everything the UX Lead and Prompt
 Engineer produce must connect through your code.
 
 **Environment — verify before anything else:**
-- [ ] `uv sync` completes without errors
-- [ ] `.env` configured with working LLM provider
-- [ ] `uv run python -c "import chromadb; import langchain; import langgraph; print('OK')`
+- [x] `uv sync` completes without errors
+- [x] `.env` configured with working LLM provider
+- [x] `uv run python -c "import chromadb; import langchain; import langgraph; print('OK')`
       passes cleanly
-- [ ] `data/chroma_db/` directory exists
+- [x] `data/chroma_db/` directory exists
 
 **Implement in this order — do not skip ahead:**
-- [ ] `EmbeddingFactory._create_local()` in `config.py`
+- [x] `EmbeddingFactory._create_local()` in `config.py`
       *Hint: use `HuggingFaceEmbeddings(model_name=self._settings.embedding_model)`
       from `langchain_community.embeddings`*
-- [ ] `LLMFactory._create_groq()` / `_create_ollama()` / `_create_lmstudio()`
+- [x] `LLMFactory._create_groq()` / `_create_ollama()` / `_create_lmstudio()`
       in `config.py` — implement whichever provider your team is using
       *Hint: `ChatGroq(api_key=..., model_name=...)` for Groq,
       `ChatOllama(base_url=..., model=...)` for Ollama*
-- [ ] `VectorStoreManager._initialise()` in `store.py`
+- [x] `VectorStoreManager._initialise()` in `store.py`
       *Hint: `chromadb.PersistentClient(path=...)` then
       `client.get_or_create_collection(name=..., metadata={"hnsw:space": "cosine"})`*
-- [ ] `VectorStoreManager.check_duplicate()` in `store.py`
+- [x] `VectorStoreManager.check_duplicate()` in `store.py`
       *Hint: `self._collection.get(ids=[chunk_id])` — returns a dict,
       check if `result["ids"]` is non-empty*
-- [ ] `VectorStoreManager.ingest()` in `store.py`
+- [x] `VectorStoreManager.ingest()` in `store.py`
       *Hint: loop chunks, call check_duplicate, embed with
       `self._embeddings.embed_documents([chunk.chunk_text])`,
       then `self._collection.upsert(ids, embeddings, documents, metadatas)`*
 
 **Hello world test — before standup:**
-- [ ] Write a scratch script (not production code) that ingests
+- [x] Write a scratch script (not production code) that ingests
       `examples/sample_chunk.json` and queries "what is a neural network"
-- [ ] Confirm a chunk is returned with a similarity score
-- [ ] Confirm running the script twice skips the chunk on the second run
+- [x] Confirm a chunk is returned with a similarity score
+- [x] Confirm running the script twice skips the chunk on the second run
 
 **Phase 1 milestone:** environment verified, embedding and LLM factories
 implemented, ChromaDB initialising, hello world retrieval returning results.
@@ -267,21 +267,21 @@ until the dependency above you is unblocked.
 **Step 1 — Pipeline Engineer + Corpus Architect**
 - [ ] Run first real ingestion with Phase 1 corpus content
 - [ ] Verify chunks stored with correct metadata in ChromaDB
-- [ ] Verify duplicate detection fires on a second ingest run
-- [ ] Verify query returns ranked results with scores above threshold
+- [x] Verify duplicate detection fires on a second ingest run
+- [x] Verify query returns ranked results with scores above threshold
 
 **Step 2 — Pipeline Engineer + Prompt Engineer**
-- [ ] Implement `query_rewrite_node` in `nodes.py`
+- [x] Implement `query_rewrite_node` in `nodes.py`
       *Hint: extract latest `HumanMessage` from state, call LLM with
       `QUERY_REWRITE_PROMPT`, return `{"rewritten_query": result}`*
-- [ ] Implement `retrieval_node` in `nodes.py`
+- [x] Implement `retrieval_node` in `nodes.py`
       *Hint: call `VectorStoreManager.query(state.rewritten_query)`,
       if empty set `{"no_context_found": True, "retrieved_chunks": []}`*
-- [ ] Implement `generation_node` in `nodes.py`
+- [x] Implement `generation_node` in `nodes.py`
       *Hint: check `state.no_context_found` first — if True return
       `NO_CONTEXT_RESPONSE` immediately. Otherwise build context string
       from retrieved chunks with citations, call LLM, return response*
-- [ ] Assemble graph in `graph.py`
+- [x] Assemble graph in `graph.py`
       *Hint: `StateGraph(AgentState)` → add nodes → add edges →
       add conditional edge from retrieval using `should_retry_retrieval` →
       `graph.compile(checkpointer=MemorySaver())`*
@@ -293,8 +293,8 @@ until the dependency above you is unblocked.
 - [ ] Wire chat to compiled LangGraph graph
       *Hint: `graph.invoke({"messages": [HumanMessage(content=query)]},
       config={"configurable": {"thread_id": st.session_state.thread_id}})`*
-- [ ] Verify source citations appear in every chat response
-- [ ] Verify no-context indicator appears when hallucination guard fires
+- [x] Verify source citations appear in every chat response
+- [x] Verify no-context indicator appears when hallucination guard fires
 
 **Step 4 — QA Lead**
 - [ ] Run all five test cases from Phase 1 test plan
@@ -315,18 +315,18 @@ until the dependency above you is unblocked.
 - [ ] Add bonus topics if core topics complete: SOM, Boltzmann, GAN
 
 #### Pipeline Engineer
-- [ ] Implement `VectorStoreManager.query()` in `store.py`
+- [x] Implement `VectorStoreManager.query()` in `store.py`
       *Hint: embed query with `self._embeddings.embed_query(query_text)`,
       call `self._collection.query(query_embeddings, n_results=k,
       include=["documents", "metadatas", "distances"])`,
       convert distances to scores: `score = 1 - distance` for cosine,
       filter below `self._settings.similarity_threshold`*
-- [ ] Implement `VectorStoreManager.list_documents()` and
+- [x] Implement `VectorStoreManager.list_documents()` and
       `get_document_chunks()` for the document viewer
-- [ ] Implement conversation memory trimming in `generation_node`
+- [x] Implement conversation memory trimming in `generation_node`
       *Hint: use `trim_messages(messages, max_tokens=settings.max_context_tokens,
       strategy="last")` from `langchain_core.messages`*
-- [ ] Confirm graph advances through all three nodes end to end
+- [x] Confirm graph advances through all three nodes end to end
 
 #### UX Lead
 - [ ] Progress indicator during ingestion
