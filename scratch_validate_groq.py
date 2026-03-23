@@ -167,5 +167,37 @@ def main() -> None:
     print("the system prompt constraints may need tightening.")
 
 
+def test_hallucination_guard() -> None:
+    print("=" * 60)
+    print("HALLUCINATION GUARD TEST")
+    print("=" * 60)
+
+    graph = AgentGraphBuilder().build()
+    config = {"configurable": {"thread_id": "validate-offopic-001"}}
+    query = "What is the capital of France?"
+
+    print(f"Query: '{query}'")
+    result = graph.invoke(
+        {"messages": [HumanMessage(content=query)]},
+        config=config,
+    )
+
+    response = result.get("final_response")
+    if response is None:
+        print("No response generated.")
+        return
+
+    print(f"\nNo context fired: {response.no_context_found}")
+    print(f"Confidence:       {response.confidence:.4f}")
+    print(f"\nAnswer:\n{response.answer}")
+
+    if response.no_context_found:
+        print("\nPASS — hallucination guard fired correctly.")
+    else:
+        print("\nFAIL — system answered an off-topic query. Tighten the similarity threshold.")
+
+
 if __name__ == "__main__":
     main()
+    print("\n")
+    test_hallucination_guard()
