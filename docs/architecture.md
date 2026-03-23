@@ -1,12 +1,12 @@
 # System Architecture
-## Team: ___________________
-## Date: ___________________
+## Team: Group 12
+## Date: 03/23/2026
 ## Members and Roles:
-- Corpus Architect: ___________________
-- Pipeline Engineer: ___________________
-- UX Lead: ___________________
-- Prompt Engineer: ___________________
-- QA Lead: ___________________
+- Corpus Architect: Kusuma
+- Pipeline Engineer: Isagani
+- UX Lead: Kusuma
+- Prompt Engineer: Srijitha
+- QA Lead: Hemanth
 
 ---
 
