@@ -24,6 +24,7 @@ dependencies = [
 
     # Embeddings
     "sentence-transformers>=3.0.0",  # local embeddings, no API key required
+    "langchain-huggingface>=0.1.0",  # LangChain wrapper for HuggingFace embeddings
 
     # Document loading
     "pypdf>=4.0.0",                  # PDF ingestion
