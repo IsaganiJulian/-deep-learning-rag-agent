@@ -56,7 +56,7 @@ def query_rewrite_node(state: AgentState) -> dict:
     dict
         Updates: original_query, rewritten_query.
     """
-    human_messages = [m for m in state.messages if isinstance(m, HumanMessage)]
+    human_messages = [m for m in state["messages"] if isinstance(m, HumanMessage)]
     original_query = human_messages[-1].content if human_messages else ""
 
     try:
@@ -100,9 +100,9 @@ def retrieval_node(state: AgentState) -> dict:
     """
     manager = VectorStoreManager()
     chunks = manager.query(
-        query_text=state.rewritten_query,
-        topic_filter=state.topic_filter,
-        difficulty_filter=state.difficulty_filter,
+        query_text=state["rewritten_query"],
+        topic_filter=state.get("topic_filter"),
+        difficulty_filter=state.get("difficulty_filter"),
     )
 
     if not chunks:
@@ -149,7 +149,7 @@ def generation_node(state: AgentState) -> dict:
     llm = LLMFactory(settings).create()
 
     # ---- Hallucination Guard -----------------------------------------------
-    if state.no_context_found:
+    if state.get("no_context_found"):
         no_context_message = (
             "I was unable to find relevant information in the corpus for your query. "
             "This may mean the topic is not yet covered in the study material, or "
@@ -161,7 +161,7 @@ def generation_node(state: AgentState) -> dict:
             sources=[],
             confidence=0.0,
             no_context_found=True,
-            rewritten_query=state.rewritten_query,
+            rewritten_query=state.get("rewritten_query", ""),
         )
         return {
             "final_response": response,
@@ -171,16 +171,16 @@ def generation_node(state: AgentState) -> dict:
     # ---- Build Context from Retrieved Chunks --------------------------------
     context_parts = []
     citations = []
-    for chunk in state.retrieved_chunks:
+    for chunk in state["retrieved_chunks"]:
         citation = chunk.to_citation()
         citations.append(citation)
         context_parts.append(f"{citation}\n{chunk.chunk_text}")
 
     context_str = "\n\n".join(context_parts)
-    confidence = sum(c.score for c in state.retrieved_chunks) / len(state.retrieved_chunks)
+    confidence = sum(c.score for c in state["retrieved_chunks"]) / len(state["retrieved_chunks"])
 
     trimmed_history = trim_messages(
-        state.messages,
+        state["messages"],
         max_tokens=settings.max_context_tokens,
         token_counter=len,
         strategy="last",
@@ -191,7 +191,7 @@ def generation_node(state: AgentState) -> dict:
         SystemMessage(content=SYSTEM_PROMPT),
         HumanMessage(content=f"CONTEXT:\n{context_str}"),
         *trimmed_history,
-        HumanMessage(content=state.original_query),
+        HumanMessage(content=state.get("original_query", "")),
     ]
 
     result = llm.invoke(messages)
@@ -202,7 +202,7 @@ def generation_node(state: AgentState) -> dict:
         sources=citations,
         confidence=confidence,
         no_context_found=False,
-        rewritten_query=state.rewritten_query,
+        rewritten_query=state.get("rewritten_query", ""),
     )
     new_ai_message = AIMessage(content=answer)
     return {"final_response": response, "messages": [new_ai_message]}
@@ -241,6 +241,6 @@ def should_retry_retrieval(state: AgentState) -> str:
     Retry logic should be limited to one attempt to prevent infinite loops.
     Track retry count in AgentState if implementing retry behaviour.
     """
-    if state.no_context_found:
+    if state.get("no_context_found"):
         return "end"
     return "generate"
