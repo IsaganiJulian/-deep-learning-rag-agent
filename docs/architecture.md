@@ -24,7 +24,8 @@ The diagram must show:
 - [ ] Where the hallucination guard sits in the graph
 - [ ] How conversation memory is maintained across turns
 
-*(replace this line with your diagram image or ASCII art)*
+![Architecture Diagram](architecture_diagram.png)
+
 
 ---
 
