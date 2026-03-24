@@ -266,7 +266,7 @@ until the dependency above you is unblocked.
 
 **Step 1 — Pipeline Engineer + Corpus Architect**
 - [ ] Run first real ingestion with Phase 1 corpus content
-- [ ] Verify chunks stored with correct metadata in ChromaDB
+- [x] Verify chunks stored with correct metadata in ChromaDB
 - [x] Verify duplicate detection fires on a second ingest run
 - [x] Verify query returns ranked results with scores above threshold
 
@@ -287,10 +287,10 @@ until the dependency above you is unblocked.
       `graph.compile(checkpointer=MemorySaver())`*
 
 **Step 3 — Pipeline Engineer + UX Lead**
-- [ ] Wire ingestion panel to `VectorStoreManager.ingest()`
-- [ ] Wire document viewer to `VectorStoreManager.list_documents()`
+- [x] Wire ingestion panel to `VectorStoreManager.ingest()`
+- [x] Wire document viewer to `VectorStoreManager.list_documents()`
       and `get_document_chunks()`
-- [ ] Wire chat to compiled LangGraph graph
+- [x] Wire chat to compiled LangGraph graph
       *Hint: `graph.invoke({"messages": [HumanMessage(content=query)]},
       config={"configurable": {"thread_id": st.session_state.thread_id}})`*
 - [x] Verify source citations appear in every chat response
