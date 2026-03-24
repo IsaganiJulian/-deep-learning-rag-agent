@@ -62,64 +62,41 @@ class DocumentChunker:
     # Public Interface
     # -----------------------------------------------------------------------
 
-  def chunk_file(
-        self, file_path: Path, metadata_overrides: dict | None = None
+    def chunk_file(
+        self,
+        file_path: Path,
+        metadata_overrides: dict | None = None,
+        chunk_size: int = DEFAULT_CHUNK_SIZE,
+        chunk_overlap: int = DEFAULT_CHUNK_OVERLAP,
     ) -> list[DocumentChunk]:
         """Loads and chunks a single file."""
-        stem = file_path.stem
-        parts = stem.split("_")
-        
-        # 1. Standardize Metadata
-        topic = parts[0].upper() if parts else "GENERAL"
-        difficulty = parts[1] if len(parts) > 1 else "intermediate"
-        is_bonus = topic.lower() in {"som", "boltzmannmachine", "gan"}
+        if not file_path.exists():
+            raise FileNotFoundError(f"File not found: {file_path}")
 
-        base_metadata = ChunkMetadata(
-            topic=topic,
-            difficulty=difficulty,
-            type="concept_explanation",
-            source=file_path.name,
-            related_topics=[],
-            is_bonus=is_bonus,
-        )
-
-        if metadata_overrides:
-            for key, value in metadata_overrides.items():
-                if hasattr(base_metadata, key):
-                    setattr(base_metadata, key, value)
-
-        # 2. Load Content
         suffix = file_path.suffix.lower()
-        raw_documents = []
-        
         if suffix == ".pdf":
-            loader = PyPDFLoader(str(file_path))
-            raw_documents = loader.load()
+            raw_chunks = self._chunk_pdf(file_path, chunk_size, chunk_overlap)
         elif suffix in (".md", ".markdown"):
-            # Use Markdown splitting logic here
-            headers_to_split_on = [("#", "Header 1"), ("##", "Header 2")]
-            splitter = MarkdownHeaderTextSplitter(headers_to_split_on)
-            with open(file_path, "r", encoding="utf-8") as f:
-                raw_documents = splitter.split_text(f.read())
-        
-        # 3. Create Chunks with IDs
-        chunks = []
-        for doc in raw_documents:
-            chunk_id = VectorStoreManager.generate_chunk_id(file_path.name, doc.page_content)
-            
-            # Copy base metadata and add page info if available
-            meta = base_metadata.model_copy()
-            if "page" in doc.metadata:
-                meta.page_number = doc.metadata["page"]
+            raw_chunks = self._chunk_markdown(file_path, chunk_size, chunk_overlap)
+        else:
+            raise ValueError(f"Unsupported file type: {suffix}")
 
-            chunks.append(
-                DocumentChunk(
-                    id=chunk_id,
-                    content=doc.page_content,
-                    metadata=meta
-                )
+        base_metadata = self._infer_metadata(file_path, metadata_overrides)
+        chunks = []
+        for raw in raw_chunks:
+            metadata = ChunkMetadata(
+                topic=base_metadata.topic,
+                difficulty=base_metadata.difficulty,
+                type=base_metadata.type,
+                source=file_path.name,
+                related_topics=base_metadata.related_topics,
+                is_bonus=base_metadata.is_bonus,
+                page_number=raw.get("page"),
             )
-            
+            chunk_id = VectorStoreManager.generate_chunk_id(file_path.name, raw["text"])
+            chunks.append(DocumentChunk(chunk_id=chunk_id, chunk_text=raw["text"], metadata=metadata))
+
+        logger.info(f"Chunked '{file_path.name}' → {len(chunks)} chunks")
         return chunks
 
     # -----------------------------------------------------------------------
