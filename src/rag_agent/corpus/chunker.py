@@ -96,13 +96,34 @@ class DocumentChunker:
         FileNotFoundError
             If the file does not exist at the given path.
         """
-        # TODO: implement
-        # 1. Validate file exists
-        # 2. Route to _chunk_pdf or _chunk_markdown based on suffix
-        # 3. Apply metadata_overrides
-        # 4. Generate chunk_ids using VectorStoreManager.generate_chunk_id
-        # 5. Return list[DocumentChunk]
-        raise NotImplementedError
+        if not file_path.exists():
+            raise FileNotFoundError(f"File not found: {file_path}")
+
+        suffix = file_path.suffix.lower()
+        if suffix == ".pdf":
+            raw_chunks = self._chunk_pdf(file_path, chunk_size, chunk_overlap)
+        elif suffix in (".md", ".markdown"):
+            raw_chunks = self._chunk_markdown(file_path, chunk_size, chunk_overlap)
+        else:
+            raise ValueError(f"Unsupported file type: {suffix}")
+
+        base_metadata = self._infer_metadata(file_path, metadata_overrides)
+        chunks = []
+        for raw in raw_chunks:
+            metadata = ChunkMetadata(
+                topic=base_metadata.topic,
+                difficulty=base_metadata.difficulty,
+                type=base_metadata.type,
+                source=file_path.name,
+                related_topics=base_metadata.related_topics,
+                is_bonus=base_metadata.is_bonus,
+                page_number=raw.get("page"),
+            )
+            chunk_id = VectorStoreManager.generate_chunk_id(file_path.name, raw["text"])
+            chunks.append(DocumentChunk(chunk_id=chunk_id, chunk_text=raw["text"], metadata=metadata))
+
+        logger.info(f"Chunked '{file_path.name}' → {len(chunks)} chunks")
+        return chunks
 
     def chunk_files(
         self,
@@ -129,8 +150,14 @@ class DocumentChunker:
             Combined chunks from all files, preserving source attribution
             in each chunk's metadata.
         """
-        # TODO: implement — iterate and collect, handle per-file errors
-        raise NotImplementedError
+        all_chunks = []
+        for file_path in file_paths:
+            try:
+                chunks = self.chunk_file(file_path, metadata_overrides)
+                all_chunks.extend(chunks)
+            except Exception as e:
+                logger.error(f"Failed to chunk '{file_path.name}': {e}")
+        return all_chunks
 
     # -----------------------------------------------------------------------
     # Format-Specific Loaders
@@ -165,9 +192,23 @@ class DocumentChunker:
             Raw dicts with 'text' and 'page' keys before conversion
             to DocumentChunk objects.
         """
-        # TODO: implement using langchain_community.document_loaders.PyPDFLoader
-        # and langchain.text_splitter.RecursiveCharacterTextSplitter
-        raise NotImplementedError
+        from langchain_community.document_loaders import PyPDFLoader
+        from langchain_text_splitters import RecursiveCharacterTextSplitter
+
+        loader = PyPDFLoader(str(file_path))
+        pages = loader.load()
+
+        splitter = RecursiveCharacterTextSplitter(
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap,
+        )
+        docs = splitter.split_documents(pages)
+
+        return [
+            {"text": doc.page_content.strip(), "page": doc.metadata.get("page", 0) + 1}
+            for doc in docs
+            if doc.page_content.strip()
+        ]
 
     def _chunk_markdown(
         self,
@@ -197,8 +238,27 @@ class DocumentChunker:
         list[dict]
             Raw dicts with 'text' and 'header' keys.
         """
-        # TODO: implement using langchain.text_splitter.MarkdownHeaderTextSplitter
-        raise NotImplementedError
+        from langchain_text_splitters import MarkdownHeaderTextSplitter, RecursiveCharacterTextSplitter
+
+        text = file_path.read_text(encoding="utf-8")
+
+        header_splitter = MarkdownHeaderTextSplitter(
+            headers_to_split_on=[("#", "h1"), ("##", "h2"), ("###", "h3")],
+            strip_headers=False,
+        )
+        header_chunks = header_splitter.split_text(text)
+
+        splitter = RecursiveCharacterTextSplitter(
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap,
+        )
+        docs = splitter.split_documents(header_chunks)
+
+        return [
+            {"text": doc.page_content.strip(), "page": None}
+            for doc in docs
+            if doc.page_content.strip()
+        ]
 
     # -----------------------------------------------------------------------
     # Metadata Inference
@@ -231,6 +291,25 @@ class DocumentChunker:
         ChunkMetadata
             Populated metadata object.
         """
-        # TODO: implement filename parsing + override merging
-        # Bonus topics: SOM, BoltzmannMachine, GAN → set is_bonus=True
-        raise NotImplementedError
+        bonus_topics = {"som", "boltzmannmachine", "gan"}
+        stem = file_path.stem.lower()
+        parts = stem.split("_")
+
+        topic = parts[0].upper() if parts else "Unknown"
+        difficulty = parts[1] if len(parts) > 1 else "intermediate"
+        is_bonus = parts[0].lower() in bonus_topics
+
+        metadata = ChunkMetadata(
+            topic=topic,
+            difficulty=difficulty,
+            type="concept_explanation",
+            source=file_path.name,
+            is_bonus=is_bonus,
+        )
+
+        if overrides:
+            for key, value in overrides.items():
+                if hasattr(metadata, key):
+                    setattr(metadata, key, value)
+
+        return metadata
