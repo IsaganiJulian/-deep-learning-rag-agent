@@ -14,6 +14,11 @@ from __future__ import annotations
 from pathlib import Path
 
 from loguru import logger
+from langchain_text_splitters import (
+    MarkdownHeaderTextSplitter,
+    RecursiveCharacterTextSplitter,
+)
+from langchain_community.document_loaders import PyPDFLoader
 
 from rag_agent.agent.state import ChunkMetadata, DocumentChunk
 from rag_agent.config import Settings, get_settings
@@ -96,13 +101,36 @@ class DocumentChunker:
         FileNotFoundError
             If the file does not exist at the given path.
         """
-        # TODO: implement
-        # 1. Validate file exists
-        # 2. Route to _chunk_pdf or _chunk_markdown based on suffix
-        # 3. Apply metadata_overrides
-        # 4. Generate chunk_ids using VectorStoreManager.generate_chunk_id
-        # 5. Return list[DocumentChunk]
-        raise NotImplementedError
+        file_path = Path(file_path)
+        if not file_path.exists():
+            raise FileNotFoundError(f"File not found: {file_path}")
+
+        suffix = file_path.suffix.lower()
+        if suffix == ".pdf":
+            raw_chunks = self._chunk_pdf(file_path, chunk_size, chunk_overlap)
+        elif suffix == ".md":
+            raw_chunks = self._chunk_markdown(file_path, chunk_size, chunk_overlap)
+        else:
+            raise ValueError(f"Unsupported file type: {file_path.suffix}")
+
+        metadata = self._infer_metadata(file_path, metadata_overrides)
+        prepared: list[DocumentChunk] = []
+
+        for raw in raw_chunks:
+            text = str(raw.get("text", "")).strip()
+            if not text:
+                continue
+            chunk_id = VectorStoreManager.generate_chunk_id(metadata.source, text)
+            prepared.append(
+                DocumentChunk(
+                    chunk_id=chunk_id,
+                    chunk_text=text,
+                    metadata=metadata,
+                )
+            )
+
+        logger.info(f"Chunked {file_path.name} into {len(prepared)} chunk(s)")
+        return prepared
 
     def chunk_files(
         self,
@@ -129,8 +157,18 @@ class DocumentChunker:
             Combined chunks from all files, preserving source attribution
             in each chunk's metadata.
         """
-        # TODO: implement — iterate and collect, handle per-file errors
-        raise NotImplementedError
+        all_chunks: list[DocumentChunk] = []
+        for path in file_paths:
+            try:
+                all_chunks.extend(
+                    self.chunk_file(
+                        file_path=path,
+                        metadata_overrides=metadata_overrides,
+                    )
+                )
+            except Exception as exc:
+                logger.error(f"Failed to chunk {path}: {exc}")
+        return all_chunks
 
     # -----------------------------------------------------------------------
     # Format-Specific Loaders
@@ -165,9 +203,28 @@ class DocumentChunker:
             Raw dicts with 'text' and 'page' keys before conversion
             to DocumentChunk objects.
         """
-        # TODO: implement using langchain_community.document_loaders.PyPDFLoader
-        # and langchain.text_splitter.RecursiveCharacterTextSplitter
-        raise NotImplementedError
+        loader = PyPDFLoader(str(file_path))
+        pages = loader.load()
+
+        splitter = RecursiveCharacterTextSplitter(
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap,
+            length_function=len,
+        )
+        split_docs = splitter.split_documents(pages)
+
+        chunks: list[dict] = []
+        for doc in split_docs:
+            text = doc.page_content.strip()
+            if not text:
+                continue
+            chunks.append(
+                {
+                    "text": text,
+                    "page": doc.metadata.get("page"),
+                }
+            )
+        return chunks
 
     def _chunk_markdown(
         self,
@@ -197,8 +254,37 @@ class DocumentChunker:
         list[dict]
             Raw dicts with 'text' and 'header' keys.
         """
-        # TODO: implement using langchain.text_splitter.MarkdownHeaderTextSplitter
-        raise NotImplementedError
+        content = file_path.read_text(encoding="utf-8", errors="ignore")
+        header_splitter = MarkdownHeaderTextSplitter(
+            headers_to_split_on=[
+                ("#", "h1"),
+                ("##", "h2"),
+                ("###", "h3"),
+            ],
+            strip_headers=False,
+        )
+        header_docs = header_splitter.split_text(content)
+
+        splitter = RecursiveCharacterTextSplitter(
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap,
+            length_function=len,
+        )
+        split_docs = splitter.split_documents(header_docs)
+
+        chunks: list[dict] = []
+        for doc in split_docs:
+            text = doc.page_content.strip()
+            if not text:
+                continue
+            header = doc.metadata.get("h3") or doc.metadata.get("h2") or doc.metadata.get("h1")
+            chunks.append(
+                {
+                    "text": text,
+                    "header": header,
+                }
+            )
+        return chunks
 
     # -----------------------------------------------------------------------
     # Metadata Inference
@@ -231,6 +317,23 @@ class DocumentChunker:
         ChunkMetadata
             Populated metadata object.
         """
-        # TODO: implement filename parsing + override merging
-        # Bonus topics: SOM, BoltzmannMachine, GAN → set is_bonus=True
-        raise NotImplementedError
+        stem = file_path.stem
+        parts = stem.split("_")
+        topic = parts[0] if parts else "general"
+        difficulty = parts[1] if len(parts) > 1 else "intermediate"
+
+        metadata_dict = {
+            "topic": topic,
+            "difficulty": difficulty,
+            "type": "concept_explanation",
+            "source": file_path.name,
+            "related_topics": [],
+            "is_bonus": topic.lower() in {"som", "boltzmannmachine", "gan"},
+        }
+
+        if overrides:
+            for key, value in overrides.items():
+                if key in metadata_dict:
+                    metadata_dict[key] = value
+
+        return ChunkMetadata(**metadata_dict)
