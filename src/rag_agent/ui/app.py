@@ -1031,7 +1031,8 @@ def render_ingestion_panel():
                         except Exception as e:
                             st.error(f"Ingestion failed: {e}")
         else:
-            st.session_state.uploaded_names = []
+            existing = get_vector_store().list_documents()
+            st.session_state.uploaded_names = [d["source"] for d in existing]
             st.sidebar.markdown(
                 """
 <div class="rag-empty" style="padding:1.1rem 0.35rem 0.85rem;">
@@ -1082,33 +1083,47 @@ def render_document_viewer():
             )
         return
 
+    selected = st.selectbox(
+        "Document",
+        options=names,
+        key="selected_document",
+        label_visibility="collapsed",
+    )
+
     with st.container(border=True):
         st.markdown(
             f'<p style="margin:0 0 0.85rem 0;font-weight:700;color:#292524;'
-            f'font-size:1.02rem;letter-spacing:-0.02em;">{html.escape(names[0])}</p>',
+            f'font-size:1.02rem;letter-spacing:-0.02em;">{html.escape(selected)}</p>',
             unsafe_allow_html=True,
         )
+
+        chunks = get_vector_store().get_document_chunks(selected)
+
+        topic = chunks[0].metadata.topic if chunks else "Deep learning"
+        difficulty = chunks[0].metadata.difficulty if chunks else "Mixed"
         st.markdown(
-            '<span class="rag-badge rag-badge-topic">Topic · Deep learning</span>'
-            '<span class="rag-badge rag-badge-diff">Difficulty · Mixed</span>'
-            '<span class="rag-badge rag-badge-muted">Chunks · after ingest</span>',
+            f'<span class="rag-badge rag-badge-topic">Topic · {html.escape(topic)}</span>'
+            f'<span class="rag-badge rag-badge-diff">Difficulty · {html.escape(difficulty)}</span>'
+            f'<span class="rag-badge rag-badge-muted">Chunks · {len(chunks)}</span>',
             unsafe_allow_html=True,
         )
-        st.info("Preview binds to your pipeline after ingestion.")
 
         doc_scroll = st.container(height=280)
         with doc_scroll:
-            st.markdown(
-                """
-<div style="font-size:0.9rem;line-height:1.58;color:#475569;padding-top:0.35rem;">
-<p style="margin:0 0 0.75rem 0;"><strong>Preview</strong> — full text will appear
-here once chunks are loaded.</p>
-<p style="margin:0;">Use the chat to ask about ANN, CNN, RNN, LSTM, attention, and
-more. Citations will reference ingested passages.</p>
-</div>
-""",
-                unsafe_allow_html=True,
-            )
+            if chunks:
+                for i, chunk in enumerate(chunks, start=1):
+                    st.markdown(
+                        f'<p style="margin:0 0 0.4rem 0;font-size:0.75rem;'
+                        f'font-weight:600;color:#94a3b8;">Chunk {i}</p>'
+                        f'<p style="font-size:0.9rem;line-height:1.58;color:#475569;'
+                        f'margin:0 0 1rem 0;">{html.escape(chunk.chunk_text)}</p>',
+                        unsafe_allow_html=True,
+                    )
+            else:
+                st.markdown(
+                    '<p style="font-size:0.9rem;color:#94a3b8;">No chunks found for this document.</p>',
+                    unsafe_allow_html=True,
+                )
 
 
 # ------------------ Chat Interface ------------------ #
@@ -1316,8 +1331,14 @@ def main():
 
     initialise_session_state()
 
-    get_vector_store()
+    vs = get_vector_store()
     get_chunker()
+
+    # Seed uploaded_names from ChromaDB on first load so existing corpus is visible
+    if not st.session_state.uploaded_names:
+        existing_docs = vs.list_documents()
+        if existing_docs:
+            st.session_state.uploaded_names = [d["source"] for d in existing_docs]
     graph = get_graph()
 
     render_ingestion_panel()
