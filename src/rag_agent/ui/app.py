@@ -990,6 +990,46 @@ def render_ingestion_panel():
                 unsafe_allow_html=True,
             )
             st.sidebar.success(f"{len(uploaded_files)} file(s) staged for ingestion")
+
+            if st.sidebar.button(
+                "Ingest files",
+                key="rag_ingest_files",
+                type="primary",
+                use_container_width=True,
+            ):
+                with st.sidebar:
+                    with st.spinner("Chunking and indexing files..."):
+                        try:
+                            settings = get_settings()
+                            corpus_dir = Path(settings.corpus_dir)
+                            corpus_dir.mkdir(parents=True, exist_ok=True)
+
+                            saved_paths: list[Path] = []
+                            for uploaded in uploaded_files:
+                                target = corpus_dir / uploaded.name
+                                target.write_bytes(uploaded.getvalue())
+                                saved_paths.append(target)
+
+                            chunker = get_chunker()
+                            vector_store = get_vector_store()
+                            chunks = chunker.chunk_files(saved_paths)
+                            if not chunks:
+                                st.error("No chunks were produced from the uploaded files.")
+                            else:
+                                result = vector_store.ingest(chunks)
+                                st.success(
+                                    f"Ingested: {result.ingested}, "
+                                    f"skipped duplicates: {result.skipped}, "
+                                    f"errors: {len(result.errors)}"
+                                )
+                                if result.errors:
+                                    for err in result.errors[:3]:
+                                        st.caption(f"- {err}")
+
+                                docs = vector_store.list_documents()
+                                st.session_state.uploaded_names = [d["source"] for d in docs]
+                        except Exception as e:
+                            st.error(f"Ingestion failed: {e}")
         else:
             st.session_state.uploaded_names = []
             st.sidebar.markdown(
