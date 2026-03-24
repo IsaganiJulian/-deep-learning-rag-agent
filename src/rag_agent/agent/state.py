@@ -57,6 +57,7 @@ class ChunkMetadata:
     source: str
     related_topics: list[str] = field(default_factory=list)
     is_bonus: bool = False
+    page_number: int | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Serialise to a flat dict for ChromaDB metadata storage."""
@@ -67,12 +68,14 @@ class ChunkMetadata:
             "source": self.source,
             "related_topics": ",".join(self.related_topics),
             "is_bonus": str(self.is_bonus).lower(),
+            "page_number": self.page_number if self.page_number is not None else -1,
         }
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> ChunkMetadata:
         """Deserialise from a ChromaDB metadata dict."""
         related = data.get("related_topics", "")
+        page = data.get("page_number", -1)
         return cls(
             topic=data["topic"],
             difficulty=data["difficulty"],
@@ -80,6 +83,7 @@ class ChunkMetadata:
             source=data["source"],
             related_topics=related.split(",") if related else [],
             is_bonus=data.get("is_bonus", "false").lower() == "true",
+            page_number=int(page) if page != -1 else None,
         )
 
 
@@ -177,7 +181,8 @@ class RetrievedChunk:
 
         Example output: '[LSTM | intermediate | hochreiter1997.pdf]'
         """
-        return f"[{self.metadata.topic} | {self.metadata.difficulty} | {self.metadata.source}]"
+        page = f" p.{self.metadata.page_number}" if self.metadata.page_number is not None else ""
+        return f"[{self.metadata.topic} | {self.metadata.difficulty} | {self.metadata.source}{page}]"
 
 
 # ---------------------------------------------------------------------------
