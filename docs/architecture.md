@@ -291,8 +291,8 @@ The diagram must show:
 ### Interface Layer
 
 - **Framework:** Streamlit
-- **Deployment platform:** *(Streamlit Community Cloud / HuggingFace Spaces)*
-- **Public URL:** *(paste your deployed app URL here once live)*
+- **Deployment platform:** Streamlit Community Cloud
+- **Public URL:** https://63sx4p6d3wpdtrufsceoqe.streamlit.app/
 
 - **Ingestion panel features:**
   Located in the sidebar. Users drag or browse to upload one or more `.pdf` or `.md` files.
