@@ -8,16 +8,23 @@ from pathlib import Path
 
 import streamlit as st
 
-# Load Streamlit secrets into environment variables so pydantic-settings picks them up
-for _key, _value in st.secrets.items():
-    if isinstance(_value, str):
-        os.environ.setdefault(_key, _value)
+# Load Streamlit secrets into environment variables before any other imports
+try:
+    for _key, _value in st.secrets.items():
+        if isinstance(_value, str):
+            os.environ[_key] = _value
+except Exception:
+    pass
+
 from langchain_core.messages import HumanMessage
 
 from rag_agent.agent.graph import get_compiled_graph
 from rag_agent.config import get_settings
 from rag_agent.corpus.chunker import DocumentChunker
 from rag_agent.vectorstore.store import VectorStoreManager
+
+# Clear cached settings so it re-reads from environment on first call
+get_settings.cache_clear()
 
 # ------------------ Cached Resources ------------------ #
 
