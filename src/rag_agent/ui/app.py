@@ -1,11 +1,17 @@
 from __future__ import annotations
 
 import html
+import os
 import re
 import uuid
 from pathlib import Path
 
 import streamlit as st
+
+# Load Streamlit secrets into environment variables so pydantic-settings picks them up
+for _key, _value in st.secrets.items():
+    if isinstance(_value, str):
+        os.environ.setdefault(_key, _value)
 from langchain_core.messages import HumanMessage
 
 from rag_agent.agent.graph import get_compiled_graph
