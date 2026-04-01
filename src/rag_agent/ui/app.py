@@ -1088,7 +1088,7 @@ def render_document_viewer():
         options=names,
         key="selected_document",
         label_visibility="collapsed",
-    )
+    ) or names[0]
 
     with st.container(border=True):
         st.markdown(

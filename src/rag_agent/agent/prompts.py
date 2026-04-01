@@ -150,3 +150,59 @@ Suggested next steps:
 
 Topics currently available: ANN, CNN, RNN, LSTM, Seq2Seq, Autoencoder
 Bonus topics (if ingested): SOM, Boltzmann Machines, GAN"""
+
+# ---------------------------------------------------------------------------
+# Hallucination Guard Prompt
+# ---------------------------------------------------------------------------
+
+HALLUCINATION_GUARD_PROMPT = """You are a strict AI guard for a RAG system.
+
+Your job is to determine whether a question can be answered using the given context.
+
+Rules:
+- If unrelated → OFF_TOPIC
+- If not enough info → INSUFFICIENT_CONTEXT
+- If answerable → ANSWERABLE
+- Do NOT guess
+
+Context:
+{context}
+
+Question:
+{question}
+
+Return:
+
+Decision: <ANSWERABLE / INSUFFICIENT_CONTEXT / OFF_TOPIC>
+Reason: <one line>
+"""
+
+# ---------------------------------------------------------------------------
+# Safe Fallback Response
+# ---------------------------------------------------------------------------
+
+SAFE_FALLBACK_RESPONSE = """I can only answer questions related to the provided \
+deep learning context.
+Please ask a relevant question."""
+
+# ---------------------------------------------------------------------------
+# Helper Functions
+# ---------------------------------------------------------------------------
+
+def build_question_prompt(context: str) -> str:
+    return QUESTION_GENERATION_PROMPT.format(context=context, difficulty="intermediate")
+
+
+def build_evaluation_prompt(context: str, question: str, answer: str) -> str:
+    return ANSWER_EVALUATION_PROMPT.format(
+        context=context,
+        question=question,
+        candidate_answer=answer,
+    )
+
+
+def build_guard_prompt(context: str, question: str) -> str:
+    return HALLUCINATION_GUARD_PROMPT.format(
+        context=context,
+        question=question,
+    )

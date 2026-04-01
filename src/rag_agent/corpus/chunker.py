@@ -62,6 +62,16 @@ class DocumentChunker:
     # Public Interface
     # -----------------------------------------------------------------------
 
+    def chunk_files(self, file_paths: list[Path], **kwargs) -> list[DocumentChunk]:
+        """Load and chunk multiple files, returning all chunks combined."""
+        all_chunks: list[DocumentChunk] = []
+        for path in file_paths:
+            try:
+                all_chunks.extend(self.chunk_file(path, **kwargs))
+            except Exception as e:
+                logger.error(f"Failed to chunk '{path.name}': {e}")
+        return all_chunks
+
     def chunk_file(
         self,
         file_path: Path,

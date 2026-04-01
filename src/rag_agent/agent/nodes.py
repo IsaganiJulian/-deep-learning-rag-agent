@@ -241,4 +241,6 @@ def should_retry_retrieval(state: AgentState) -> str:
     Retry logic should be limited to one attempt to prevent infinite loops.
     Track retry count in AgentState if implementing retry behaviour.
     """
+    if state.get("no_context_found"):
+        return "generate"  # generation_node handles the guard message
     return "generate"

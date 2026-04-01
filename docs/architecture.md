@@ -107,10 +107,11 @@ The diagram must show:
   header-aware splitting; PDFs use PyPDFLoader followed by recursive character splitting.
 
 - **Landmark papers ingested:**
-  *(list the papers your team located and ingested, one per line)*
-  -
-  -
-  -
+  - Rumelhart, Hinton & Williams (1986) — Backpropagation
+  - LeCun et al. (1998) — LeNet / CNNs
+  - Hochreiter & Schmidhuber (1997) — LSTM
+  - Sutskever, Vinyals & Le (2014) — Seq2Seq
+  - Hinton & Salakhutdinov (2006) — Autoencoders
 
 - **Chunking strategy:**
   512-character chunks with 50-character overlap, applied after format-specific splitting.
@@ -151,12 +152,12 @@ The diagram must show:
   something filename-based deduplication would miss entirely.
 
 - **Corpus coverage:**
-  - [ ] ANN
-  - [ ] CNN
-  - [ ] RNN
-  - [ ] LSTM
-  - [ ] Seq2Seq
-  - [ ] Autoencoder
+  - [x] ANN — 5 chunks (forward propagation, backprop, activation functions, loss functions, vanishing gradients)
+  - [x] CNN — 5 chunks (convolution operation, pooling, feature maps, LeNet, AlexNet)
+  - [x] RNN — 4 chunks (hidden state, BPTT, vanishing gradients, applications)
+  - [x] LSTM — 5 chunks (vanishing gradient solution, forget gate, input gate, output gate, LSTM vs RNN)
+  - [x] Seq2Seq — 5 chunks (encoder-decoder, encoder, decoder, relation to autoencoders, attention)
+  - [x] Autoencoder — 5 chunks (architecture, latent space, denoising AE, variational AE, applications)
   - [ ] SOM *(bonus)*
   - [ ] Boltzmann Machine *(bonus)*
   - [ ] GAN *(bonus)*
@@ -329,7 +330,7 @@ The diagram must show:
   | prompt_queue | Holds a suggested prompt chip label so it can be submitted on the next rerun without double-firing |
 
 - **Stretch features implemented:**
-  *(streaming responses, async ingestion, hybrid search, re-ranking, other)*
+  Animated hero header with gradient blobs. Quick-start prompt chips. Per-source citation expanders with metadata tags. Warm/cool visual design system with light/dark mode support via CSS variables.
 
 ---
 
@@ -363,19 +364,19 @@ These are your Hour 3 interview talking points — be specific.
 
 | Test | Expected | Actual | Pass / Fail |
 |---|---|---|---|
-| Normal query | Relevant chunks, source cited | | |
-| Off-topic query | No context found message | | |
-| Duplicate ingestion | Second upload skipped | | |
-| Empty query | Graceful error, no crash | | |
-| Cross-topic query | Multi-topic retrieval | | |
+| Normal query — "Explain the vanishing gradient problem" | Relevant chunks retrieved, accurate answer, source cited | Chunks from ANN and RNN files retrieved, answer cites `[ANN \| ann_intermediate.md]` | Pass |
+| Off-topic query — "What is the capital of France" | Hallucination guard fires, clear no-context message | Guard message returned, no fabricated deep learning content | Pass |
+| Duplicate ingestion — upload same file twice | Second upload detected and skipped | `IngestionResult.skipped` equals chunk count on second run | Pass |
+| Empty query — submit blank input | Graceful error, no crash | Streamlit chat_input does not submit empty strings; no crash observed | Pass |
+| Cross-topic query — "How do LSTMs improve on RNNs for Seq2Seq" | Chunks from at least two topics retrieved | Chunks from `lstm_intermediate.md` and `rnn_intermediate.md` both returned | Pass |
 
 **Critical failures fixed before Hour 3:**
--
--
+- `chunker.py` had an indentation error on `chunk_file` — fixed and `chunk_files()` method added.
+- `should_retry_retrieval` always returned `"generate"` — generation_node now handles the `no_context_found` branch internally with the guard message.
 
 **Known issues not fixed (and why):**
--
--
+- Conversation memory does not persist across app restarts (MemorySaver is in-process only — acceptable for a demo, would require a persistent database in production).
+- PDF chunking may produce noisy chunks from reference sections in academic papers — not filtered in the current pipeline due to time constraints.
 
 ---
 
@@ -474,14 +475,17 @@ regardless of what the file is called.
 *(fill in after Hour 3)*
 
 **What clicked:**
--
+- The LangGraph graph structure made the agent's control flow explicit and easy to debug — adding print statements at each node immediately showed where state was or wasn't passing through.
+- Header-aware Markdown splitting produced noticeably cleaner chunks than naive character splitting on the same files.
+- The content-hash chunk ID approach made duplicate detection completely reliable with zero extra bookkeeping.
 
 **What confused us:**
--
+- `trim_messages` from `langchain_core.messages` has a non-obvious API — the `token_counter=len` argument counts messages rather than tokens, which required careful tuning of `MAX_CONTEXT_TOKENS`.
+- ChromaDB `where` filters require the exact field name and value from the stored metadata, not the Python object attribute names — this caused silent retrieval failures until we matched field names exactly.
 
 **One thing each team member would study before a real interview:**
-- Corpus Architect:
-- Pipeline Engineer:
-- UX Lead:
-- Prompt Engineer:
-- QA Lead:
+- Corpus Architect (Kusuma): Chunk quality evaluation — how to measure retrieval precision and recall against a labeled test set rather than eyeballing results.
+- Pipeline Engineer (Isagani): Advanced RAG patterns — hybrid search (BM25 + vector), re-ranking with cross-encoders, and parent-document retrieval strategies.
+- UX Lead (Kusuma): Streamlit async patterns — how to use `st.fragment` and background threads to prevent the UI from blocking during long operations.
+- Prompt Engineer (Srijitha): Structured output reliability — how to use function calling / tool use APIs to guarantee JSON schema compliance rather than relying on prompt instructions alone.
+- QA Lead (Hemanth): LangGraph evaluation frameworks — how to use LangSmith or RAGAS to quantitatively score retrieval quality and answer faithfulness at scale.
