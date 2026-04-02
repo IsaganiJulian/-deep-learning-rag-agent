@@ -21,7 +21,7 @@ from langchain_core.messages import HumanMessage
 from rag_agent.agent.graph import get_compiled_graph
 from rag_agent.config import get_settings
 from rag_agent.corpus.chunker import DocumentChunker
-from rag_agent.vectorstore.store import VectorStoreManager
+from rag_agent.vectorstore.store import VectorStoreManager, get_shared_store
 
 # Clear cached settings so it re-reads from environment on first call
 get_settings.cache_clear()
@@ -32,7 +32,6 @@ get_settings.cache_clear()
 @st.cache_resource
 def get_vector_store() -> VectorStoreManager:
     """Return the single shared in-memory vector store for this app instance."""
-    from rag_agent.vectorstore.store import get_shared_store
     return get_shared_store()
 
 
