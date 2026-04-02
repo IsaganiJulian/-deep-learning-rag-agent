@@ -269,3 +269,4 @@ class AgentState(MessagesState):
     final_response: AgentResponse | None = None
     topic_filter: str | None = None
     difficulty_filter: str | None = None
+    session_id: str = "default"

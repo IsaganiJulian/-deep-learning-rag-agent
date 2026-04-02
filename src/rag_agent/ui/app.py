@@ -31,7 +31,9 @@ get_settings.cache_clear()
 
 @st.cache_resource
 def get_vector_store() -> VectorStoreManager:
-    return VectorStoreManager()
+    """Return the single shared in-memory vector store for this app instance."""
+    from rag_agent.vectorstore.store import get_shared_store
+    return get_shared_store()
 
 
 @st.cache_resource
@@ -1123,20 +1125,11 @@ def render_document_viewer():
 
         doc_scroll = st.container(height=280)
         with doc_scroll:
-            if chunks:
-                for i, chunk in enumerate(chunks, start=1):
-                    st.markdown(
-                        f'<p style="margin:0 0 0.4rem 0;font-size:0.75rem;'
-                        f'font-weight:600;color:#94a3b8;">Chunk {i}</p>'
-                        f'<p style="font-size:0.9rem;line-height:1.58;color:#475569;'
-                        f'margin:0 0 1rem 0;">{html.escape(chunk.chunk_text)}</p>',
-                        unsafe_allow_html=True,
-                    )
-            else:
-                st.markdown(
-                    '<p style="font-size:0.9rem;color:#94a3b8;">No chunks found for this document.</p>',
-                    unsafe_allow_html=True,
-                )
+            st.markdown(
+                f'<p style="font-size:0.9rem;color:#94a3b8;">'
+                f'{len(chunks)} chunk(s) indexed and ready for retrieval.</p>',
+                unsafe_allow_html=True,
+            )
 
 
 # ------------------ Chat Interface ------------------ #

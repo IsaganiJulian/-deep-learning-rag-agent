@@ -25,6 +25,17 @@ from rag_agent.agent.state import (
 from rag_agent.config import EmbeddingFactory, Settings, get_settings
 
 
+_shared_store: "VectorStoreManager | None" = None
+
+
+def get_shared_store(settings: "Settings | None" = None) -> "VectorStoreManager":
+    """Return the single shared in-memory VectorStoreManager for this process."""
+    global _shared_store
+    if _shared_store is None:
+        _shared_store = VectorStoreManager(settings=settings, ephemeral=True)
+    return _shared_store
+
+
 class VectorStoreManager:
     """
     Manages the ChromaDB persistent vector store for the corpus.
@@ -48,8 +59,9 @@ class VectorStoreManager:
     ...     print(chunk.to_citation(), chunk.score)
     """
 
-    def __init__(self, settings: Settings | None = None) -> None:
+    def __init__(self, settings: Settings | None = None, ephemeral: bool = False) -> None:
         self._settings = settings or get_settings()
+        self._ephemeral = ephemeral
         self._embeddings = EmbeddingFactory(self._settings).create()
         self._client = None
         self._collection = None
@@ -75,9 +87,11 @@ class VectorStoreManager:
         """
         import chromadb
 
-        Path(self._settings.chroma_db_path).mkdir(parents=True, exist_ok=True)
-
-        self._client = chromadb.PersistentClient(path=self._settings.chroma_db_path)
+        if self._ephemeral:
+            self._client = chromadb.EphemeralClient()
+        else:
+            Path(self._settings.chroma_db_path).mkdir(parents=True, exist_ok=True)
+            self._client = chromadb.PersistentClient(path=self._settings.chroma_db_path)
 
         self._collection = self._client.get_or_create_collection(
             name=self._settings.chroma_collection_name,

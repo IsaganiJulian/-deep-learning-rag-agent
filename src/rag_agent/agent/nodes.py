@@ -21,7 +21,7 @@ from rag_agent.agent.prompts import (
 )
 from rag_agent.agent.state import AgentResponse, AgentState, RetrievedChunk
 from rag_agent.config import LLMFactory, get_settings
-from rag_agent.vectorstore.store import VectorStoreManager
+from rag_agent.vectorstore.store import get_shared_store
 
 
 # ---------------------------------------------------------------------------
@@ -92,13 +92,16 @@ def retrieval_node(state: AgentState) -> dict:
     state : AgentState
         Current graph state.
         Reads: rewritten_query, topic_filter, difficulty_filter.
+    config : dict
+        LangGraph runtime config. Contains thread_id used to look up
+        the caller's session-scoped vector store.
 
     Returns
     -------
     dict
         Updates: retrieved_chunks, no_context_found.
     """
-    manager = VectorStoreManager()
+    manager = get_shared_store()
     chunks = manager.query(
         query_text=state["rewritten_query"],
         topic_filter=state.get("topic_filter"),
